@@ -80,7 +80,8 @@ export const useFileProcessor = () => {
             break;
           case 'pdf-to-powerpoint':
             blob = await DocumentProcessor.pdfToPowerPoint(file);
-            filename = file.name.replace(/\.pdf$/i, '.pptx');
+            // CRUCIAL CHANGE: Save as .txt file since we're creating plain text
+            filename = file.name.replace(/\.pdf$/i, '_extraction.txt');
             break;
           case 'pdf-to-jpg':
             const images = await PDFProcessor.pdfToImages(file, 'jpg');
