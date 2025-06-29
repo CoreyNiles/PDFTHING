@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { PDFProcessor } from '../utils/pdfProcessor';
 import { DocumentProcessor } from '../utils/documentProcessor';
+import { AdvancedPdfProcessor } from '../utils/advancedPdfProcessor';
+import { PrivacyManager } from '../utils/privacyManager';
 
 export interface ProcessedFile {
   blob: Blob;
@@ -21,6 +23,9 @@ export const useFileProcessor = () => {
     setIsProcessing(true);
     setError(null);
     setProcessedFiles([]);
+
+    // Register files for privacy management
+    files.forEach(file => PrivacyManager.registerFile(file));
 
     try {
       let results: ProcessedFile[] = [];
@@ -43,8 +48,14 @@ export const useFileProcessor = () => {
       }
 
       setProcessedFiles(results);
+      
+      // Register processed files for cleanup
+      results.forEach(result => PrivacyManager.registerFile(result.blob));
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Processing failed');
+      // Clear data on error
+      PrivacyManager.clearAllData();
     } finally {
       setIsProcessing(false);
     }
@@ -88,7 +99,6 @@ export const useFileProcessor = () => {
           filename = file.name.replace(/\.(xls|xlsx)$/i, '.pdf');
           break;
         case 'jpg-to-pdf':
-          // Handle multiple images to single PDF
           if (files.length > 1) {
             blob = await PDFProcessor.imagesToPdf(files);
             filename = 'converted_images.pdf';
@@ -100,7 +110,7 @@ export const useFileProcessor = () => {
           break;
         case 'html-to-pdf':
           if (options?.url) {
-            blob = await PDFProcessor.htmlToPdf(options.url);
+            blob = await AdvancedPdfProcessor.htmlToPdfAdvanced(options.url);
             filename = 'webpage.pdf';
           } else {
             throw new Error('URL required for HTML to PDF conversion');
@@ -184,11 +194,16 @@ export const useFileProcessor = () => {
           filename = `numbered_${file.name}`;
           break;
         case 'crop-pdf':
+          blob = await AdvancedPdfProcessor.cropPdf(file, options?.cropSettings);
+          filename = `cropped_${file.name}`;
+          break;
         case 'edit-pdf':
-        case 'ocr-pdf':
-          // These would require more complex implementations
-          blob = await PDFProcessor.compressPdf(file); // Placeholder
+          blob = await AdvancedPdfProcessor.editPdf(file, options?.edits || []);
           filename = `edited_${file.name}`;
+          break;
+        case 'ocr-pdf':
+          blob = await AdvancedPdfProcessor.ocrPdf(file);
+          filename = `ocr_${file.name}`;
           break;
         default:
           throw new Error(`Unsupported editing type: ${toolType}`);
@@ -213,15 +228,17 @@ export const useFileProcessor = () => {
           filename = `protected_${file.name}`;
           break;
         case 'unlock-pdf':
-          // This would require password verification
-          blob = await PDFProcessor.compressPdf(file); // Placeholder
+          blob = await AdvancedPdfProcessor.unlockPdf(file, options?.password || '');
           filename = `unlocked_${file.name}`;
           break;
         case 'redact-pdf':
+          blob = await AdvancedPdfProcessor.redactPdf(file, options?.redactions || []);
+          filename = `redacted_${file.name}`;
+          break;
         case 'esign-pdf':
-          // These would require more complex implementations
-          blob = await PDFProcessor.compressPdf(file); // Placeholder
-          filename = `secured_${file.name}`;
+          // For now, add a signature placeholder
+          blob = await PDFProcessor.addWatermark(file, 'DIGITALLY SIGNED');
+          filename = `signed_${file.name}`;
           break;
         default:
           throw new Error(`Unsupported security type: ${toolType}`);
@@ -235,15 +252,28 @@ export const useFileProcessor = () => {
 
   const downloadFile = useCallback((processedFile: ProcessedFile) => {
     PDFProcessor.downloadFile(processedFile.blob, processedFile.filename);
+    
+    // Clear the downloaded file from memory after a short delay
+    setTimeout(() => {
+      PrivacyManager.clearFileData(processedFile.blob);
+    }, 1000);
   }, []);
 
   const downloadAllAsZip = useCallback((zipName: string = 'processed_files.zip') => {
     if (processedFiles.length > 0) {
       PDFProcessor.downloadAsZip(processedFiles, zipName);
+      
+      // Clear all files from memory after download
+      setTimeout(() => {
+        PrivacyManager.clearAllData();
+      }, 2000);
     }
   }, [processedFiles]);
 
   const reset = useCallback(() => {
+    // Clear all data from memory
+    PrivacyManager.clearAllData();
+    
     setProcessedFiles([]);
     setError(null);
     setIsProcessing(false);

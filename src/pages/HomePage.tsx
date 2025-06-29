@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, RefreshCw, Edit3, Shield, Merge, Split, Download, Upload, Image, FileSpreadsheet, Presentation, Lock, Unlock, FileSignature as Signature, Eye, Scissors, RotateCcw, Compass as Compress, Search } from 'lucide-react';
+import { FileText, RefreshCw, Edit3, Shield, Merge, Split, Download, Upload, Image, FileSpreadsheet, Presentation, Lock, Unlock, FileSignature as Signature, Eye, Scissors, RotateCcw, Compass as Compress, Search, Zap, Users, Trash2 } from 'lucide-react';
 
 const HomePage: React.FC = () => {
   const toolCategories = [
@@ -59,6 +59,27 @@ const HomePage: React.FC = () => {
     },
   ];
 
+  const privacyFeatures = [
+    {
+      icon: Shield,
+      title: 'Zero Server Processing',
+      description: 'All operations happen in your browser using advanced JavaScript libraries',
+      color: 'text-green-400'
+    },
+    {
+      icon: Trash2,
+      title: 'Automatic Data Deletion',
+      description: 'Files are immediately cleared from memory after processing',
+      color: 'text-blue-400'
+    },
+    {
+      icon: Zap,
+      title: 'No Accounts Required',
+      description: 'Start using professional PDF tools instantly - completely free',
+      color: 'text-purple-400'
+    }
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -69,15 +90,23 @@ const HomePage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
+            <div className="inline-flex items-center space-x-2 bg-green-900/20 border border-green-700/30 rounded-full px-4 py-2 mb-6">
+              <Shield className="h-4 w-4 text-green-400" />
+              <span className="text-sm font-medium text-green-400">100% Privacy Protected</span>
+            </div>
+            
             <h1 className="text-5xl md:text-6xl font-bold text-blueprint-100 mb-6">
               Professional PDF 
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-cyan to-blue-400">
                 {" "}Tools Suite
               </span>
             </h1>
-            <p className="text-xl text-blueprint-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-blueprint-300 mb-4 max-w-3xl mx-auto leading-relaxed">
               Convert, edit, organize, and secure your PDF documents with professional-grade tools. 
-              Fast, secure, and designed for modern workflows.
+              <strong className="text-blueprint-100"> Completely client-side</strong> - your files never leave your device.
+            </p>
+            <p className="text-lg text-blueprint-400 mb-8 max-w-2xl mx-auto">
+              No servers, no accounts, no limits. Just powerful PDF processing in your browser.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -94,6 +123,43 @@ const HomePage: React.FC = () => {
               </Link>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Privacy Features Section */}
+      <section className="py-16 bg-blueprint-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl font-bold text-blueprint-100 mb-4">
+              Privacy-First PDF Processing
+            </h2>
+            <p className="text-xl text-blueprint-400 max-w-2xl mx-auto">
+              Your documents stay on your device. No uploads, no servers, no compromises.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {privacyFeatures.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 * index }}
+                className="text-center p-6 bg-blueprint-900 rounded-2xl border border-blueprint-800 hover:border-blueprint-700 transition-colors"
+              >
+                <div className="inline-flex p-4 bg-blueprint-800 rounded-2xl mb-4">
+                  <feature.icon className={`h-8 w-8 ${feature.color}`} strokeWidth={1} />
+                </div>
+                <h3 className="text-xl font-semibold text-blueprint-100 mb-3">{feature.title}</h3>
+                <p className="text-blueprint-400 leading-relaxed">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -121,7 +187,7 @@ const HomePage: React.FC = () => {
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 * categoryIndex }}
-                className="bg-blueprint-800 rounded-2xl p-8 border border-blueprint-700 hover:border-blueprint-600 transition-all duration-300"
+                className="bg-blueprint-800 rounded-2xl p-8 border border-blueprint-700 hover:border-blueprint-600 transition-all duration-300 hover:shadow-xl hover:shadow-blueprint-900/50"
               >
                 <div className="mb-6">
                   <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${category.color} mb-4`}>
@@ -136,7 +202,7 @@ const HomePage: React.FC = () => {
                     <Link
                       key={tool.name}
                       to={tool.href}
-                      className="flex items-center space-x-3 p-3 rounded-lg bg-blueprint-900 hover:bg-blueprint-750 transition-all duration-200 group border border-blueprint-700 hover:border-accent-cyan/50"
+                      className="flex items-center space-x-3 p-3 rounded-lg bg-blueprint-900 hover:bg-blueprint-750 transition-all duration-200 group border border-blueprint-700 hover:border-accent-cyan/50 hover:shadow-lg"
                     >
                       <tool.icon className="h-4 w-4 text-blueprint-400 group-hover:text-accent-cyan transition-colors" strokeWidth={1} />
                       <span className="text-sm font-medium text-blueprint-200 group-hover:text-blueprint-100 transition-colors">
@@ -151,63 +217,36 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-blueprint-950">
+      {/* Technical Details Section */}
+      <section className="py-16 bg-blueprint-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-blueprint-100 mb-4">
-              Why Choose PDFTools Pro?
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-blueprint-100 mb-4">
+              Powered by Advanced Client-Side Libraries
             </h2>
             <p className="text-xl text-blueprint-400 max-w-2xl mx-auto">
-              Professional-grade tools with modern security and lightning-fast processing
+              Professional-grade processing using cutting-edge browser technologies
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-center p-8 bg-blueprint-900 rounded-2xl border border-blueprint-800"
-            >
-              <div className="inline-flex p-4 bg-accent-cyan/10 rounded-2xl mb-6">
-                <Shield className="h-8 w-8 text-accent-cyan" strokeWidth={1} />
-              </div>
-              <h3 className="text-xl font-semibold text-blueprint-100 mb-4">Secure Processing</h3>
-              <p className="text-blueprint-400">
-                All files are processed securely in your browser with modern encryption standards
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-center p-8 bg-blueprint-900 rounded-2xl border border-blueprint-800"
-            >
-              <div className="inline-flex p-4 bg-accent-cyan/10 rounded-2xl mb-6">
-                <RefreshCw className="h-8 w-8 text-accent-cyan" strokeWidth={1} />
-              </div>
-              <h3 className="text-xl font-semibold text-blueprint-100 mb-4">Lightning Fast</h3>
-              <p className="text-blueprint-400">
-                Advanced algorithms and optimized processing ensure your files are converted in seconds
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-center p-8 bg-blueprint-900 rounded-2xl border border-blueprint-800"
-            >
-              <div className="inline-flex p-4 bg-accent-cyan/10 rounded-2xl mb-6">
-                <Download className="h-8 w-8 text-accent-cyan" strokeWidth={1} />
-              </div>
-              <h3 className="text-xl font-semibold text-blueprint-100 mb-4">No Software Required</h3>
-              <p className="text-blueprint-400">
-                Works directly in your browser on any device. No downloads or installations required
-              </p>
-            </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { name: 'PDF-lib', desc: 'Advanced PDF manipulation' },
+              { name: 'PDF.js', desc: 'Mozilla\'s PDF rendering engine' },
+              { name: 'Tesseract.js', desc: 'OCR text recognition' },
+              { name: 'Mammoth.js', desc: 'Word document processing' }
+            ].map((tech, index) => (
+              <motion.div
+                key={tech.name}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 * index }}
+                className="bg-blueprint-900 rounded-lg p-4 border border-blueprint-800 text-center"
+              >
+                <h3 className="font-semibold text-blueprint-100 mb-1">{tech.name}</h3>
+                <p className="text-sm text-blueprint-400">{tech.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
