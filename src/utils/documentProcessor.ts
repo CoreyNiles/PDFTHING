@@ -83,7 +83,7 @@ export class DocumentProcessor {
     }
   }
 
-  // Convert PowerPoint to PDF - Improved XML parsing
+  // Convert PowerPoint to PDF - FIXED XML parsing
   static async powerPointToPdf(file: File): Promise<Blob> {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -111,27 +111,35 @@ export class DocumentProcessor {
           try {
             const slideContent = zip.files[slideFile].asText();
             
-            // More robust text extraction using multiple patterns
+            // **THE FIX IS HERE:** Properly extract text from XML
+            // Use multiple regex patterns to catch different text elements
             const textPatterns = [
-              /<a:t[^>]*>([^<]*)<\/a:t>/g,
-              /<t[^>]*>([^<]*)<\/t>/g,
-              /<text[^>]*>([^<]*)<\/text>/g
+              /<a:t[^>]*>([^<]*)<\/a:t>/g,  // Main text elements
+              /<a:t>([^<]*)<\/a:t>/g,       // Simple text elements
+              /<t[^>]*>([^<]*)<\/t>/g,      // Alternative text elements
             ];
             
-            let extractedTexts: string[] = [];
+            const extractedTexts = new Set<string>(); // Use Set to avoid duplicates
             
             textPatterns.forEach(pattern => {
               let match;
               while ((match = pattern.exec(slideContent)) !== null) {
-                const text = match[1].trim();
-                if (text && !extractedTexts.includes(text)) {
-                  extractedTexts.push(text);
+                const text = match[1]
+                  .replace(/&amp;/g, '&')     // Decode HTML entities
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'")
+                  .trim();
+                
+                if (text && text.length > 0) {
+                  extractedTexts.add(text);
                 }
               }
             });
             
-            if (extractedTexts.length > 0) {
-              extractedTexts.forEach(text => {
+            if (extractedTexts.size > 0) {
+              Array.from(extractedTexts).forEach(text => {
                 content += `• ${text}\n`;
               });
             } else {
