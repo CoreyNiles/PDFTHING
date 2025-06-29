@@ -5,9 +5,10 @@ import FileUpload from '../components/FileUpload';
 import URLInput from '../components/URLInput';
 import ToolHeader from '../components/ToolHeader';
 import ProcessingStatus from '../components/ProcessingStatus';
+import ConversionLimitationsNotice from '../components/ConversionLimitationsNotice';
 import { getToolConfig } from '../utils/toolConfig';
 import { useFileProcessor } from '../hooks/useFileProcessor';
-import { Download, Package } from 'lucide-react';
+import { Download, Package, AlertCircle } from 'lucide-react';
 
 const ConvertPage: React.FC = () => {
   const { toolType } = useParams<{ toolType: string }>();
@@ -50,6 +51,7 @@ const ConvertPage: React.FC = () => {
   }
 
   const isHtmlToPdf = toolType === 'html-to-pdf';
+  const showLimitations = !isProcessing && processedFiles.length === 0;
 
   return (
     <div className="min-h-screen bg-blueprint-900 py-8">
@@ -66,6 +68,12 @@ const ConvertPage: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-8"
         >
+          {/* Show limitations notice */}
+          <ConversionLimitationsNotice 
+            toolType={toolType || ''} 
+            isVisible={showLimitations}
+          />
+
           {!isProcessing && processedFiles.length === 0 && (
             <>
               {isHtmlToPdf ? (
@@ -98,7 +106,7 @@ const ConvertPage: React.FC = () => {
                 </h3>
                 <p className="text-blueprint-400 mb-6">
                   {url ? (
-                    <>URL: <span className="text-accent-cyan">{url}</span></>
+                    <>URL: <span className="text-accent-cyan break-all">{url}</span></>
                   ) : (
                     `${files.length} file${files.length !== 1 ? 's' : ''} selected for conversion`
                   )}
@@ -116,7 +124,7 @@ const ConvertPage: React.FC = () => {
           {isProcessing && (
             <ProcessingStatus 
               message="Converting your files..."
-              subMessage="Processing files locally in your browser"
+              subMessage="Processing files locally in your browser for maximum privacy"
             />
           )}
 
@@ -127,10 +135,33 @@ const ConvertPage: React.FC = () => {
               className="mt-8"
             >
               <div className="bg-red-900/20 border border-red-700 rounded-2xl p-8 text-center">
+                <div className="inline-flex p-4 bg-red-500/10 rounded-2xl mb-4">
+                  <AlertCircle className="h-8 w-8 text-red-400" />
+                </div>
                 <h3 className="text-xl font-semibold text-red-400 mb-4">
                   Conversion Failed
                 </h3>
-                <p className="text-red-300 mb-6">{error}</p>
+                <p className="text-red-300 mb-6 leading-relaxed">{error}</p>
+                
+                {/* Helpful suggestions based on error type */}
+                {error.includes('No readable text') && (
+                  <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-6">
+                    <h4 className="text-blue-400 font-medium mb-2">Suggestion:</h4>
+                    <p className="text-blue-300 text-sm">
+                      This appears to be a scanned PDF. Try using the <strong>OCR PDF</strong> tool first to extract text from images.
+                    </p>
+                  </div>
+                )}
+                
+                {error.includes('password') && (
+                  <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-6">
+                    <h4 className="text-blue-400 font-medium mb-2">Suggestion:</h4>
+                    <p className="text-blue-300 text-sm">
+                      This PDF is password-protected. Use the <strong>Unlock PDF</strong> tool first to remove protection.
+                    </p>
+                  </div>
+                )}
+                
                 <button
                   onClick={() => {
                     setFiles([]);
@@ -177,10 +208,10 @@ const ConvertPage: React.FC = () => {
                 <div className="space-y-3 mb-6">
                   {processedFiles.map((processedFile, index) => (
                     <div key={index} className="flex items-center justify-between bg-blueprint-900 rounded-lg p-4 border border-blueprint-700">
-                      <span className="text-blueprint-200 font-medium">{processedFile.filename}</span>
+                      <span className="text-blueprint-200 font-medium truncate mr-4">{processedFile.filename}</span>
                       <button 
                         onClick={() => downloadFile(processedFile)}
-                        className="px-4 py-2 bg-accent-cyan text-blueprint-900 rounded-lg font-medium hover:bg-accent-cyan/90 transition-colors inline-flex items-center space-x-2"
+                        className="px-4 py-2 bg-accent-cyan text-blueprint-900 rounded-lg font-medium hover:bg-accent-cyan/90 transition-colors inline-flex items-center space-x-2 flex-shrink-0"
                       >
                         <Download className="h-4 w-4" />
                         <span>Download</span>
