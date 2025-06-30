@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import FileUpload from '../components/FileUpload';
-import URLInput from '../components/URLInput';
+import HTMLInput from '../components/HTMLInput';
 import ToolHeader from '../components/ToolHeader';
 import ProcessingStatus from '../components/ProcessingStatus';
 import ConversionLimitationsNotice from '../components/ConversionLimitationsNotice';
@@ -13,31 +13,31 @@ import { Download, Package, AlertCircle } from 'lucide-react';
 const ConvertPage: React.FC = () => {
   const { toolType } = useParams<{ toolType: string }>();
   const [files, setFiles] = useState<File[]>([]);
-  const [url, setUrl] = useState<string>('');
+  const [htmlInput, setHtmlInput] = useState<string>('');
   
   const { isProcessing, processedFiles, error, processFiles, downloadFile, downloadAllAsZip, reset } = useFileProcessor();
   const toolConfig = getToolConfig('convert', toolType || '');
 
   const handleFilesSelected = useCallback((selectedFiles: File[]) => {
     setFiles(selectedFiles);
-    setUrl('');
+    setHtmlInput('');
     reset();
   }, [reset]);
 
-  const handleUrlSubmit = useCallback((submittedUrl: string) => {
-    setUrl(submittedUrl);
+  const handleHtmlSubmit = useCallback((submittedHtml: string) => {
+    setHtmlInput(submittedHtml);
     setFiles([]);
     reset();
   }, [reset]);
 
   const handleConvert = useCallback(async () => {
-    if (files.length === 0 && !url) return;
+    if (files.length === 0 && !htmlInput) return;
 
-    const options = url ? { url } : undefined;
-    const filesToProcess = url ? [] : files;
+    const options = htmlInput ? { html: htmlInput } : undefined;
+    const filesToProcess = htmlInput ? [] : files;
     
     await processFiles(filesToProcess, toolType || '', 'convert', options);
-  }, [files, url, toolType, processFiles]);
+  }, [files, htmlInput, toolType, processFiles]);
 
   if (!toolConfig) {
     return (
@@ -77,10 +77,10 @@ const ConvertPage: React.FC = () => {
           {!isProcessing && processedFiles.length === 0 && (
             <>
               {isHtmlToPdf ? (
-                <URLInput
-                  onUrlSubmit={handleUrlSubmit}
-                  title="Enter Website URL"
-                  subtitle="Paste the URL of the webpage you want to convert to PDF"
+                <HTMLInput
+                  onHtmlSubmit={handleHtmlSubmit}
+                  title="Convert HTML to PDF"
+                  subtitle="Paste HTML code or enter a website URL to convert to PDF"
                 />
               ) : (
                 <FileUpload
@@ -94,7 +94,7 @@ const ConvertPage: React.FC = () => {
             </>
           )}
 
-          {((files.length > 0) || url) && !isProcessing && processedFiles.length === 0 && (
+          {(files.length > 0 || htmlInput) && !isProcessing && processedFiles.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -105,8 +105,12 @@ const ConvertPage: React.FC = () => {
                   Ready to Convert
                 </h3>
                 <p className="text-blueprint-400 mb-6">
-                  {url ? (
-                    <>URL: <span className="text-accent-cyan break-all">{url}</span></>
+                  {htmlInput ? (
+                    htmlInput.startsWith('http') ? (
+                      <>URL: <span className="text-accent-cyan break-all">{htmlInput}</span></>
+                    ) : (
+                      'HTML content is ready for conversion'
+                    )
                   ) : (
                     `${files.length} file${files.length !== 1 ? 's' : ''} selected for conversion`
                   )}
@@ -162,10 +166,19 @@ const ConvertPage: React.FC = () => {
                   </div>
                 )}
                 
+                {error.includes('CORS') && (
+                  <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-6">
+                    <h4 className="text-blue-400 font-medium mb-2">Suggestion:</h4>
+                    <p className="text-blue-300 text-sm">
+                      This website blocks automated capture. Try using <strong>HTML input mode</strong> instead, or use your browser's "Print to PDF" feature.
+                    </p>
+                  </div>
+                )}
+                
                 <button
                   onClick={() => {
                     setFiles([]);
-                    setUrl('');
+                    setHtmlInput('');
                     reset();
                   }}
                   className="px-6 py-3 bg-blueprint-700 text-blueprint-100 rounded-lg font-medium hover:bg-blueprint-600 transition-colors"
@@ -222,7 +235,7 @@ const ConvertPage: React.FC = () => {
                 <button
                   onClick={() => {
                     setFiles([]);
-                    setUrl('');
+                    setHtmlInput('');
                     reset();
                   }}
                   className="px-6 py-3 bg-blueprint-700 text-blueprint-100 rounded-lg font-medium hover:bg-blueprint-600 transition-colors"

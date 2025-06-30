@@ -111,11 +111,12 @@ export const useFileProcessor = () => {
             }
             break;
           case 'html-to-pdf':
-            if (options?.url) {
-              blob = await PDFProcessor.htmlToPdf(options.url);
-              filename = 'webpage.pdf';
+            // Handle both HTML content and URLs
+            if (options?.html) {
+              blob = await PDFProcessor.htmlToPdf(options.html);
+              filename = options.html.startsWith('http') ? 'webpage.pdf' : 'html_document.pdf';
             } else {
-              throw new Error('URL required for HTML to PDF conversion');
+              throw new Error('HTML content or URL required for HTML to PDF conversion');
             }
             break;
           default:
