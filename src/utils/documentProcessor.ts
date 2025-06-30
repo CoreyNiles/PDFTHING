@@ -97,11 +97,11 @@ export class DocumentProcessor {
         try {
           const slideContent = zip.files[slideFile].asText();
           
-          // **THE FIX:** Properly extract text from XML
+          // Extract text from XML
           const textPatterns = [
-            /<a:t[^>]*>([^<]*)<\/a:t>/g,  // Main text elements
-            /<a:t>([^<]*)<\/a:t>/g,       // Simple text elements
-            /<t[^>]*>([^<]*)<\/t>/g,      // Alternative text elements
+            /<a:t[^>]*>([^<]*)<\/a:t>/g,
+            /<a:t>([^<]*)<\/a:t>/g,
+            /<t[^>]*>([^<]*)<\/t>/g,
           ];
           
           const extractedTexts = new Set<string>();
@@ -110,7 +110,7 @@ export class DocumentProcessor {
             let match;
             while ((match = pattern.exec(slideContent)) !== null) {
               const text = match[1]
-                .replace(/&amp;/g, '&')     // Decode HTML entities
+                .replace(/&amp;/g, '&')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
                 .replace(/&quot;/g, '"')
@@ -145,11 +145,22 @@ export class DocumentProcessor {
     }
   }
 
+  // Convert Text to PDF
+  static async textToPdf(file: File): Promise<Blob> {
+    try {
+      const text = await file.text();
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      return PDFProcessor.createFormattedPdf(text, title);
+    } catch (error) {
+      console.error('Text to PDF conversion failed:', error);
+      throw new Error('Failed to convert text file. The file may be corrupted or in an unsupported format.');
+    }
+  }
+
   // PDF to Word - Extracts text and creates a REAL .docx file
   static async pdfToWord(file: File): Promise<Blob> {
     try {
       const extractedText = await PDFProcessor.extractTextFromPdf(file);
-      // This now creates a valid .docx file using the docx library
       return await createDocxFromText(extractedText, file.name);
     } catch (error) {
       console.error('PDF to Word conversion failed:', error);
@@ -201,8 +212,7 @@ export class DocumentProcessor {
     }
   }
 
-  // PDF to PowerPoint - This creates a text file instead of fake .pptx
-  // A true client-side conversion is not feasible with current libraries
+  // PDF to PowerPoint - Creates a text file with extracted content
   static async pdfToPowerPoint(file: File): Promise<Blob> {
     try {
       const extractedText = await PDFProcessor.extractTextFromPdf(file);
@@ -227,13 +237,25 @@ export class DocumentProcessor {
       pptContent += '2. Open PowerPoint\n';
       pptContent += '3. Paste and format as needed\n';
       
-      // IMPORTANT: We are creating a .txt file to avoid creating a corrupted .pptx file
       return new Blob([pptContent], { 
         type: 'text/plain;charset=utf-8' 
       });
     } catch (error) {
       console.error('PDF to PowerPoint extraction failed:', error);
       throw new Error('Failed to extract text for PowerPoint. The PDF may be an image or password-protected.');
+    }
+  }
+
+  // PDF to Text - Simple text extraction
+  static async pdfToText(file: File): Promise<Blob> {
+    try {
+      const extractedText = await PDFProcessor.extractTextFromPdf(file);
+      return new Blob([extractedText], { 
+        type: 'text/plain;charset=utf-8' 
+      });
+    } catch (error) {
+      console.error('PDF to Text conversion failed:', error);
+      throw new Error('Failed to extract text from PDF. The PDF may be an image or password-protected.');
     }
   }
 }

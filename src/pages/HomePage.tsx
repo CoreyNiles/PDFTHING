@@ -1,82 +1,80 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, RefreshCw, Edit3, Shield, Merge, Split, Download, Upload, Image, FileSpreadsheet, Presentation, Lock, Unlock, FileSignature as Signature, Eye, Scissors, RotateCcw, Compass as Compress, Search, Zap, Users, Trash2 } from 'lucide-react';
+import { FileText, RefreshCw, Edit3, Shield, Merge, Split, Download, Upload, Image, FileSpreadsheet, Presentation, Lock, Unlock, Scissors, RotateCcw, Compass as Compress, Search, Zap, Users, Type, Globe } from 'lucide-react';
 
 const HomePage: React.FC = () => {
   const toolCategories = [
     {
-      title: 'Convert Files',
-      description: 'Transform your documents between formats',
+      title: 'PDF to Other Formats',
+      description: 'Convert PDF documents to different file formats',
       color: 'from-blue-500 to-cyan-500',
       tools: [
         { name: 'PDF to Word', icon: FileText, href: '/convert/pdf-to-word' },
         { name: 'PDF to Excel', icon: FileSpreadsheet, href: '/convert/pdf-to-excel' },
         { name: 'PDF to PowerPoint', icon: Presentation, href: '/convert/pdf-to-powerpoint' },
+        { name: 'PDF to Text', icon: Type, href: '/convert/pdf-to-txt' },
         { name: 'PDF to JPG', icon: Image, href: '/convert/pdf-to-jpg' },
+      ]
+    },
+    {
+      title: 'Convert to PDF',
+      description: 'Transform documents and files into PDF format',
+      color: 'from-green-500 to-teal-500',
+      tools: [
         { name: 'Word to PDF', icon: Upload, href: '/convert/word-to-pdf' },
         { name: 'Excel to PDF', icon: Upload, href: '/convert/excel-to-pdf' },
-        { name: 'JPG to PDF', icon: Upload, href: '/convert/jpg-to-pdf' },
-        { name: 'HTML to PDF', icon: Upload, href: '/convert/html-to-pdf' },
+        { name: 'PowerPoint to PDF', icon: Upload, href: '/convert/powerpoint-to-pdf' },
+        { name: 'Text to PDF', icon: Upload, href: '/convert/txt-to-pdf' },
+        { name: 'Images to PDF', icon: Upload, href: '/convert/jpg-to-pdf' },
+        { name: 'URL to PDF', icon: Globe, href: '/convert/url-to-pdf' },
       ]
     },
     {
       title: 'Organize & Optimize',
       description: 'Merge, split, and optimize your PDFs',
-      color: 'from-green-500 to-teal-500',
+      color: 'from-purple-500 to-pink-500',
       tools: [
         { name: 'Merge PDF', icon: Merge, href: '/organize/merge-pdf' },
         { name: 'Split PDF', icon: Split, href: '/organize/split-pdf' },
-        { name: 'Organize PDF', icon: RefreshCw, href: '/organize/organize-pdf' },
         { name: 'Rotate PDF', icon: RotateCcw, href: '/organize/rotate-pdf' },
         { name: 'Compress PDF', icon: Compress, href: '/organize/compress-pdf' },
         { name: 'Delete Pages', icon: Scissors, href: '/organize/delete-pages' },
       ]
     },
     {
-      title: 'Edit Content',
-      description: 'Add text, images, and enhance your documents',
-      color: 'from-purple-500 to-pink-500',
+      title: 'Edit & Security',
+      description: 'Edit content and secure your documents',
+      color: 'from-red-500 to-orange-500',
       tools: [
         { name: 'Edit PDF', icon: Edit3, href: '/edit/edit-pdf' },
         { name: 'Add Watermark', icon: Image, href: '/edit/add-watermark' },
         { name: 'Number Pages', icon: FileText, href: '/edit/number-pages' },
         { name: 'OCR PDF', icon: Search, href: '/edit/ocr-pdf' },
-        { name: 'PDF Reader', icon: Eye, href: '/edit/pdf-reader' },
-        { name: 'Crop PDF', icon: Scissors, href: '/edit/crop-pdf' },
-      ]
-    },
-    {
-      title: 'Security & Signatures',
-      description: 'Protect and sign your documents',
-      color: 'from-red-500 to-orange-500',
-      tools: [
-        { name: 'eSign PDF', icon: Signature, href: '/security/esign-pdf' },
         { name: 'Protect PDF', icon: Lock, href: '/security/protect-pdf' },
         { name: 'Unlock PDF', icon: Unlock, href: '/security/unlock-pdf' },
-        { name: 'Redact PDF', icon: Shield, href: '/security/redact-pdf' },
       ]
     },
   ];
 
-  const privacyFeatures = [
+  const features = [
     {
-      icon: Shield,
-      title: 'Zero Server Processing',
-      description: 'All operations happen in your browser using advanced JavaScript libraries',
-      color: 'text-green-400'
+      icon: Zap,
+      title: 'Lightning Fast',
+      description: 'Process files instantly with no waiting time',
+      color: 'text-yellow-400'
     },
     {
-      icon: Trash2,
-      title: 'Automatic Data Deletion',
-      description: 'Files are immediately cleared from memory after processing',
+      icon: Users,
+      title: 'No Account Required',
+      description: 'Start using all tools immediately without signing up',
       color: 'text-blue-400'
     },
     {
-      icon: Zap,
-      title: 'No Accounts Required',
-      description: 'Start using professional PDF tools instantly - completely free',
-      color: 'text-purple-400'
+      icon: Download,
+      title: 'Completely Free',
+      description: 'All features available at no cost, no hidden fees',
+      color: 'text-green-400'
     }
   ];
 
@@ -90,23 +88,18 @@ const HomePage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center space-x-2 bg-green-900/20 border border-green-700/30 rounded-full px-4 py-2 mb-6">
-              <Shield className="h-4 w-4 text-green-400" />
-              <span className="text-sm font-medium text-green-400">100% Privacy Protected</span>
-            </div>
-            
             <h1 className="text-5xl md:text-6xl font-bold text-blueprint-100 mb-6">
-              Professional PDF 
+              All-in-One PDF 
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-cyan to-blue-400">
-                {" "}Tools Suite
+                {" "}Tools
               </span>
             </h1>
             <p className="text-xl text-blueprint-300 mb-4 max-w-3xl mx-auto leading-relaxed">
-              Convert, edit, organize, and secure your PDF documents with professional-grade tools. 
-              <strong className="text-blueprint-100"> Completely client-side</strong> - your files never leave your device.
+              Convert, edit, organize, and secure your PDF documents with professional tools. 
+              <strong className="text-blueprint-100"> Lightning fast</strong> and completely free.
             </p>
             <p className="text-lg text-blueprint-400 mb-8 max-w-2xl mx-auto">
-              No servers, no accounts, no limits. Just powerful PDF processing in your browser.
+              No accounts, no limits, no costs. Just powerful PDF processing.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -126,7 +119,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Privacy Features Section */}
+      {/* Features Section */}
       <section className="py-16 bg-blueprint-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -136,15 +129,15 @@ const HomePage: React.FC = () => {
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold text-blueprint-100 mb-4">
-              Privacy-First PDF Processing
+              Simple, Fast, Free
             </h2>
             <p className="text-xl text-blueprint-400 max-w-2xl mx-auto">
-              Your documents stay on your device. No uploads, no servers, no compromises.
+              Professional PDF tools that work instantly in your browser
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {privacyFeatures.map((feature, index) => (
+            {features.map((feature, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
@@ -176,7 +169,7 @@ const HomePage: React.FC = () => {
               Complete PDF Toolkit
             </h2>
             <p className="text-xl text-blueprint-400 max-w-2xl mx-auto">
-              Everything you need to work with PDF documents, from simple conversions to advanced editing
+              Everything you need to work with PDF documents
             </p>
           </motion.div>
 
@@ -211,40 +204,6 @@ const HomePage: React.FC = () => {
                     </Link>
                   ))}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Technical Details Section */}
-      <section className="py-16 bg-blueprint-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-blueprint-100 mb-4">
-              Powered by Advanced Client-Side Libraries
-            </h2>
-            <p className="text-xl text-blueprint-400 max-w-2xl mx-auto">
-              Professional-grade processing using cutting-edge browser technologies
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { name: 'PDF-lib', desc: 'Advanced PDF manipulation' },
-              { name: 'PDF.js', desc: 'Mozilla\'s PDF rendering engine' },
-              { name: 'Tesseract.js', desc: 'OCR text recognition' },
-              { name: 'Mammoth.js', desc: 'Word document processing' }
-            ].map((tech, index) => (
-              <motion.div
-                key={tech.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 * index }}
-                className="bg-blueprint-900 rounded-lg p-4 border border-blueprint-800 text-center"
-              >
-                <h3 className="font-semibold text-blueprint-100 mb-1">{tech.name}</h3>
-                <p className="text-sm text-blueprint-400">{tech.desc}</p>
               </motion.div>
             ))}
           </div>

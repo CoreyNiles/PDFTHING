@@ -583,100 +583,8 @@ export class PDFProcessor {
     }
   }
 
-  // Enhanced HTML to PDF - handles both HTML strings and URLs
-  static async htmlToPdf(input: string): Promise<Blob> {
-    try {
-      const isUrl = input.startsWith('http://') || input.startsWith('https://');
-      
-      if (isUrl) {
-        return await this.urlToPdf(input);
-      } else {
-        return await this.htmlStringToPdf(input);
-      }
-    } catch (error) {
-      console.error('HTML to PDF conversion failed:', error);
-      throw new Error('Failed to convert HTML to PDF. Please check your input and try again.');
-    }
-  }
-
-  // Convert HTML string to PDF
-  private static async htmlStringToPdf(htmlContent: string): Promise<Blob> {
-    try {
-      // Create a temporary iframe to render the HTML
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'absolute';
-      iframe.style.left = '-9999px';
-      iframe.style.width = '1200px';
-      iframe.style.height = '800px';
-      iframe.style.border = 'none';
-      iframe.style.backgroundColor = 'white';
-      document.body.appendChild(iframe);
-      
-      // Write HTML content to iframe
-      iframe.contentDocument!.open();
-      iframe.contentDocument!.write(htmlContent);
-      iframe.contentDocument!.close();
-
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          document.body.removeChild(iframe);
-          reject(new Error('Timeout rendering HTML content. The content might be too complex.'));
-        }, 15000);
-
-        // Wait for content to load
-        setTimeout(async () => {
-          try {
-            clearTimeout(timeout);
-            
-            // Additional wait for images and styles to load
-            await new Promise(res => setTimeout(res, 2000));
-            
-            // Import html2canvas dynamically
-            const html2canvas = (await import('html2canvas')).default;
-            
-            const canvas = await html2canvas(iframe.contentDocument!.body, {
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: '#ffffff',
-              scale: 1,
-              width: 1200,
-              height: iframe.contentDocument!.body.scrollHeight || 800,
-            });
-            
-            const pdfDoc = await PDFDocument.create();
-            const page = pdfDoc.addPage([canvas.width, canvas.height]);
-            
-            const imgData = canvas.toDataURL('image/png');
-            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-            const image = await pdfDoc.embedPng(imgBytes);
-
-            page.drawImage(image, {
-              x: 0,
-              y: 0,
-              width: canvas.width,
-              height: canvas.height,
-            });
-
-            const pdfBytes = await pdfDoc.save();
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-            
-            document.body.removeChild(iframe);
-            resolve(pdfBlob);
-          } catch (error) {
-            clearTimeout(timeout);
-            document.body.removeChild(iframe);
-            reject(new Error(`Failed to convert HTML: ${error.message}`));
-          }
-        }, 1000);
-      });
-    } catch (error) {
-      console.error('Error converting HTML string to PDF:', error);
-      throw new Error('Failed to convert HTML string to PDF.');
-    }
-  }
-
   // Convert URL to PDF with CORS handling
-  private static async urlToPdf(url: string): Promise<Blob> {
+  static async urlToPdf(url: string): Promise<Blob> {
     try {
       // Validate URL
       try {
@@ -816,7 +724,6 @@ export class PDFProcessor {
       '',
       'Alternative solutions:',
       '• Use your browser\'s "Print to PDF" feature',
-      '• Copy the webpage content and use HTML input mode',
       '• Try a different URL that allows cross-origin access',
       '• Use browser extensions designed for webpage capture',
       '',

@@ -70,6 +70,7 @@ export const useFileProcessor = () => {
 
       try {
         switch (toolType) {
+          // PDF to other formats
           case 'pdf-to-word':
             blob = await DocumentProcessor.pdfToWord(file);
             filename = file.name.replace(/\.pdf$/i, '.docx');
@@ -80,8 +81,11 @@ export const useFileProcessor = () => {
             break;
           case 'pdf-to-powerpoint':
             blob = await DocumentProcessor.pdfToPowerPoint(file);
-            // CRUCIAL CHANGE: Save as .txt file since we're creating plain text
             filename = file.name.replace(/\.pdf$/i, '_extraction.txt');
+            break;
+          case 'pdf-to-txt':
+            blob = await DocumentProcessor.pdfToText(file);
+            filename = file.name.replace(/\.pdf$/i, '.txt');
             break;
           case 'pdf-to-jpg':
             const images = await PDFProcessor.pdfToImages(file, 'jpg');
@@ -92,6 +96,8 @@ export const useFileProcessor = () => {
               });
             }
             continue;
+          
+          // Other formats to PDF
           case 'word-to-pdf':
             blob = await DocumentProcessor.wordToPdf(file);
             filename = file.name.replace(/\.(doc|docx)$/i, '.pdf');
@@ -99,6 +105,14 @@ export const useFileProcessor = () => {
           case 'excel-to-pdf':
             blob = await DocumentProcessor.excelToPdf(file);
             filename = file.name.replace(/\.(xls|xlsx)$/i, '.pdf');
+            break;
+          case 'powerpoint-to-pdf':
+            blob = await DocumentProcessor.powerPointToPdf(file);
+            filename = file.name.replace(/\.(ppt|pptx)$/i, '.pdf');
+            break;
+          case 'txt-to-pdf':
+            blob = await DocumentProcessor.textToPdf(file);
+            filename = file.name.replace(/\.txt$/i, '.pdf');
             break;
           case 'jpg-to-pdf':
             if (files.length > 1) {
@@ -110,13 +124,12 @@ export const useFileProcessor = () => {
               filename = file.name.replace(/\.(jpg|jpeg|png|gif|bmp|tiff)$/i, '.pdf');
             }
             break;
-          case 'html-to-pdf':
-            // Handle both HTML content and URLs
-            if (options?.html) {
-              blob = await PDFProcessor.htmlToPdf(options.html);
-              filename = options.html.startsWith('http') ? 'webpage.pdf' : 'html_document.pdf';
+          case 'url-to-pdf':
+            if (options?.url) {
+              blob = await PDFProcessor.urlToPdf(options.url);
+              filename = 'webpage.pdf';
             } else {
-              throw new Error('HTML content or URL required for HTML to PDF conversion');
+              throw new Error('URL required for URL to PDF conversion');
             }
             break;
           default:
@@ -125,12 +138,20 @@ export const useFileProcessor = () => {
 
         results.push({ blob, filename });
       } catch (fileError) {
-        // If processing a single file fails, add it to the error but continue with others
         console.error(`Failed to process ${file.name}:`, fileError);
         if (files.length === 1) {
-          throw fileError; // Re-throw if only one file
+          throw fileError;
         }
-        // For multiple files, continue processing others
+      }
+    }
+
+    // Handle URL to PDF case where no files are provided
+    if (toolType === 'url-to-pdf' && files.length === 0 && options?.url) {
+      try {
+        const blob = await PDFProcessor.urlToPdf(options.url);
+        results.push({ blob, filename: 'webpage.pdf' });
+      } catch (error) {
+        throw error;
       }
     }
 

@@ -1,4 +1,4 @@
-import { FileText, Image, FileSpreadsheet, Presentation, Upload, Merge, Split, RefreshCw, RotateCcw, Compass as Compress, Scissors, Edit3, Eye, Search, Lock, Unlock, Shield, FileSignature as Signature } from 'lucide-react';
+import { FileText, Image, FileSpreadsheet, Presentation, Upload, Merge, Split, RefreshCw, RotateCcw, Compass as Compress, Scissors, Edit3, Eye, Search, Lock, Unlock, Shield, FileSignature as Signature, Type, Globe } from 'lucide-react';
 
 export interface ToolConfig {
   title: string;
@@ -12,9 +12,10 @@ export interface ToolConfig {
 
 const toolConfigs: Record<string, Record<string, ToolConfig>> = {
   convert: {
+    // PDF to other formats
     'pdf-to-word': {
       title: 'PDF to Word',
-      description: 'Convert PDF documents to editable Word files with perfect formatting preservation',
+      description: 'Convert PDF documents to editable Word files',
       icon: FileText,
       acceptedFormats: ['.pdf'],
       outputFormat: 'docx',
@@ -22,7 +23,7 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
     },
     'pdf-to-excel': {
       title: 'PDF to Excel',
-      description: 'Extract tables and data from PDF files into Excel spreadsheets',
+      description: 'Extract data from PDF files into Excel spreadsheets',
       icon: FileSpreadsheet,
       acceptedFormats: ['.pdf'],
       outputFormat: 'xlsx',
@@ -30,11 +31,19 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
     },
     'pdf-to-powerpoint': {
       title: 'PDF to PowerPoint',
-      description: 'Convert PDF presentations back to editable PowerPoint format',
+      description: 'Convert PDF presentations to PowerPoint format',
       icon: Presentation,
       acceptedFormats: ['.pdf'],
-      outputFormat: 'pptx',
+      outputFormat: 'txt',
       maxFiles: 5,
+    },
+    'pdf-to-txt': {
+      title: 'PDF to Text',
+      description: 'Extract plain text content from PDF documents',
+      icon: Type,
+      acceptedFormats: ['.pdf'],
+      outputFormat: 'txt',
+      maxFiles: 20,
     },
     'pdf-to-jpg': {
       title: 'PDF to JPG',
@@ -44,9 +53,11 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
       outputFormat: 'jpg',
       maxFiles: 20,
     },
+    
+    // Other formats to PDF
     'word-to-pdf': {
       title: 'Word to PDF',
-      description: 'Convert Word documents to professional PDF files',
+      description: 'Convert Word documents to PDF files',
       icon: Upload,
       acceptedFormats: ['.doc', '.docx'],
       outputFormat: 'pdf',
@@ -54,27 +65,43 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
     },
     'excel-to-pdf': {
       title: 'Excel to PDF',
-      description: 'Convert Excel spreadsheets to PDF with preserved formatting',
+      description: 'Convert Excel spreadsheets to PDF',
       icon: Upload,
       acceptedFormats: ['.xls', '.xlsx'],
       outputFormat: 'pdf',
       maxFiles: 10,
     },
+    'powerpoint-to-pdf': {
+      title: 'PowerPoint to PDF',
+      description: 'Convert PowerPoint presentations to PDF',
+      icon: Upload,
+      acceptedFormats: ['.ppt', '.pptx'],
+      outputFormat: 'pdf',
+      maxFiles: 10,
+    },
+    'txt-to-pdf': {
+      title: 'Text to PDF',
+      description: 'Convert plain text files to formatted PDF documents',
+      icon: Upload,
+      acceptedFormats: ['.txt'],
+      outputFormat: 'pdf',
+      maxFiles: 20,
+    },
     'jpg-to-pdf': {
-      title: 'JPG to PDF',
+      title: 'Images to PDF',
       description: 'Convert images to PDF documents',
       icon: Upload,
       acceptedFormats: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff'],
       outputFormat: 'pdf',
       maxFiles: 50,
     },
-    'html-to-pdf': {
-      title: 'HTML to PDF',
-      description: 'Convert web pages and HTML content to PDF',
-      icon: Upload,
-      acceptedFormats: ['.html', '.htm'],
+    'url-to-pdf': {
+      title: 'URL to PDF',
+      description: 'Convert web pages to PDF documents',
+      icon: Globe,
+      acceptedFormats: [],
       outputFormat: 'pdf',
-      maxFiles: 5,
+      maxFiles: 1,
     },
   },
   organize: {
@@ -88,19 +115,11 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
     },
     'split-pdf': {
       title: 'Split PDF',
-      description: 'Separate PDF pages into individual files or page ranges',
+      description: 'Separate PDF pages into individual files',
       icon: Split,
       acceptedFormats: ['.pdf'],
       maxFiles: 1,
       actionText: 'Split PDF',
-    },
-    'organize-pdf': {
-      title: 'Organize PDF',
-      description: 'Reorder, rotate, and delete pages within your PDF',
-      icon: RefreshCw,
-      acceptedFormats: ['.pdf'],
-      maxFiles: 1,
-      actionText: 'Organize Pages',
     },
     'rotate-pdf': {
       title: 'Rotate PDF',
@@ -130,7 +149,7 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
   edit: {
     'edit-pdf': {
       title: 'Edit PDF',
-      description: 'Add text, images, and shapes directly to your PDF',
+      description: 'Add text, images, and shapes to your PDF',
       icon: Edit3,
       acceptedFormats: ['.pdf'],
       maxFiles: 5,
@@ -138,7 +157,7 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
     },
     'add-watermark': {
       title: 'Add Watermark',
-      description: 'Add text or image watermarks to your PDF pages',
+      description: 'Add text watermarks to your PDF pages',
       icon: Image,
       acceptedFormats: ['.pdf'],
       maxFiles: 20,
@@ -160,22 +179,6 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
       maxFiles: 10,
       actionText: 'Extract Text',
     },
-    'pdf-reader': {
-      title: 'PDF Reader',
-      description: 'View and read PDF files in your browser',
-      icon: Eye,
-      acceptedFormats: ['.pdf'],
-      maxFiles: 1,
-      actionText: 'Open Reader',
-    },
-    'crop-pdf': {
-      title: 'Crop PDF',
-      description: 'Trim and adjust the margins of your PDF pages',
-      icon: Scissors,
-      acceptedFormats: ['.pdf'],
-      maxFiles: 10,
-      actionText: 'Crop Pages',
-    },
   },
   security: {
     'protect-pdf': {
@@ -193,22 +196,6 @@ const toolConfigs: Record<string, Record<string, ToolConfig>> = {
       acceptedFormats: ['.pdf'],
       maxFiles: 10,
       actionText: 'Remove Protection',
-    },
-    'esign-pdf': {
-      title: 'eSign PDF',
-      description: 'Add electronic signatures to your PDF documents',
-      icon: Signature,
-      acceptedFormats: ['.pdf'],
-      maxFiles: 5,
-      actionText: 'Add Signature',
-    },
-    'redact-pdf': {
-      title: 'Redact PDF',
-      description: 'Permanently remove sensitive information from PDFs',
-      icon: Shield,
-      acceptedFormats: ['.pdf'],
-      maxFiles: 10,
-      actionText: 'Redact Content',
     },
   },
 };
