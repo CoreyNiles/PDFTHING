@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
-  Save, Download, Undo, Redo, ZoomIn, ZoomOut, RotateCcw, 
+  Save, Download, Undo, Redo, ZoomIn, ZoomOut, 
   Type, Image, Square, Circle, Minus, MousePointer, 
-  Palette, Bold, Italic, Underline, Strikethrough,
-  AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Plus, Trash2, Copy, Move, Layers, Grid, Maximize2,
-  FileText, Settings, Eye, EyeOff, Lock, Unlock
+  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
+  Plus, Trash2, Copy, RotateCcw, Palette, X, FileText,
+  Move, Layers, Grid, Maximize2, Settings
 } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -27,11 +26,8 @@ interface TextElement {
   bold: boolean;
   italic: boolean;
   underline: boolean;
-  strikethrough: boolean;
-  alignment: 'left' | 'center' | 'right' | 'justify';
+  alignment: 'left' | 'center' | 'right';
   rotation: number;
-  locked: boolean;
-  visible: boolean;
   zIndex: number;
 }
 
@@ -44,8 +40,6 @@ interface ImageElement {
   height: number;
   src: string;
   rotation: number;
-  locked: boolean;
-  visible: boolean;
   zIndex: number;
 }
 
@@ -60,8 +54,6 @@ interface ShapeElement {
   strokeColor: string;
   strokeWidth: number;
   rotation: number;
-  locked: boolean;
-  visible: boolean;
   zIndex: number;
 }
 
@@ -94,10 +86,7 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showGrid, setShowGrid] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'home' | 'insert' | 'design' | 'layout'>('home');
 
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -107,7 +96,7 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
   // Font options
   const fontFamilies = [
     'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 
-    'Georgia', 'Verdana', 'Trebuchet MS', 'Comic Sans MS'
+    'Georgia', 'Verdana', 'Trebuchet MS', 'Calibri'
   ];
 
   // Load PDF
@@ -194,18 +183,15 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
       y,
       width: 200,
       height: 30,
-      content: 'New Text',
+      content: 'Click to edit text',
       fontSize: 16,
       fontFamily: 'Arial',
       color: '#000000',
       bold: false,
       italic: false,
       underline: false,
-      strikethrough: false,
       alignment: 'left',
       rotation: 0,
-      locked: false,
-      visible: true,
       zIndex: pages[currentPageIndex]?.elements.length || 0
     };
 
@@ -228,8 +214,6 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
         height: 150,
         src: e.target?.result as string,
         rotation: 0,
-        locked: false,
-        visible: true,
         zIndex: pages[currentPageIndex]?.elements.length || 0
       };
 
@@ -254,8 +238,6 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
       strokeColor: '#000000',
       strokeWidth: 2,
       rotation: 0,
-      locked: false,
-      visible: true,
       zIndex: pages[currentPageIndex]?.elements.length || 0
     };
 
@@ -308,12 +290,12 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
   }, [pages, currentPageIndex, addToHistory]);
 
   // Canvas interaction
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
     
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / zoom;
-    const y = (e.clientY - rect.top) / zoom;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - 32) / zoom; // Account for padding
+    const y = (e.clientY - rect.top - 32) / zoom;
 
     if (tool === 'text') {
       addTextElement(x, y);
@@ -336,8 +318,7 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
           x >= element.x && 
           x <= element.x + element.width &&
           y >= element.y && 
-          y <= element.y + element.height &&
-          element.visible
+          y <= element.y + element.height
         );
       
       setSelectedElement(clickedElement?.id || null);
@@ -365,7 +346,6 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
     if (pages.length <= 1) return;
     
     const updatedPages = pages.filter((_, index) => index !== pageIndex);
-    // Update page numbers
     updatedPages.forEach((page, index) => {
       page.pageNumber = index + 1;
       page.id = `page-${index + 1}`;
@@ -378,31 +358,6 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
       setCurrentPageIndex(updatedPages.length - 1);
     }
   }, [pages, currentPageIndex, addToHistory]);
-
-  const duplicatePage = useCallback((pageIndex: number) => {
-    const pageToClone = pages[pageIndex];
-    const newPage: PDFPage = {
-      ...JSON.parse(JSON.stringify(pageToClone)),
-      id: `page-${pages.length + 1}`,
-      pageNumber: pages.length + 1,
-      elements: pageToClone.elements.map(el => ({
-        ...el,
-        id: generateId()
-      }))
-    };
-    
-    const updatedPages = [...pages];
-    updatedPages.splice(pageIndex + 1, 0, newPage);
-    
-    // Update page numbers
-    updatedPages.forEach((page, index) => {
-      page.pageNumber = index + 1;
-      page.id = `page-${index + 1}`;
-    });
-    
-    setPages(updatedPages);
-    addToHistory(updatedPages);
-  }, [pages, addToHistory]);
 
   // Save functionality
   const savePDF = async () => {
@@ -432,8 +387,6 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
         const sortedElements = [...pageData.elements].sort((a, b) => a.zIndex - b.zIndex);
         
         for (const element of sortedElements) {
-          if (!element.visible) continue;
-          
           if (element.type === 'text') {
             const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
             page.drawText(element.content, {
@@ -497,12 +450,45 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
   };
 
   const downloadPDF = async () => {
-    await savePDF();
     const pdfDoc = await PDFDocument.create();
     
     for (const pageData of pages) {
       const page = pdfDoc.addPage([pageData.width, pageData.height]);
-      // ... (same logic as savePDF)
+      
+      if (pageData.backgroundImage) {
+        try {
+          const imageBytes = await fetch(pageData.backgroundImage).then(res => res.arrayBuffer());
+          const image = await pdfDoc.embedPng(imageBytes);
+          page.drawImage(image, {
+            x: 0,
+            y: 0,
+            width: pageData.width,
+            height: pageData.height,
+          });
+        } catch (e) {
+          console.warn('Failed to embed background image:', e);
+        }
+      }
+      
+      const sortedElements = [...pageData.elements].sort((a, b) => a.zIndex - b.zIndex);
+      
+      for (const element of sortedElements) {
+        if (element.type === 'text') {
+          const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          page.drawText(element.content, {
+            x: element.x,
+            y: pageData.height - element.y - element.height,
+            size: element.fontSize,
+            font,
+            color: rgb(
+              parseInt(element.color.slice(1, 3), 16) / 255,
+              parseInt(element.color.slice(3, 5), 16) / 255,
+              parseInt(element.color.slice(5, 7), 16) / 255
+            ),
+            rotate: degrees(element.rotation),
+          });
+        }
+      }
     }
     
     const pdfBytes = await pdfDoc.save();
@@ -520,275 +506,303 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
       <div className="fixed inset-0 bg-blueprint-900 flex items-center justify-center z-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-cyan mx-auto mb-4"></div>
-          <p className="text-blueprint-100">Loading PDF Editor...</p>
+          <p className="text-blueprint-100 text-lg">Loading PDF Editor...</p>
+          <p className="text-blueprint-400 text-sm mt-2">Preparing your document for editing</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`fixed inset-0 bg-blueprint-900 z-50 flex flex-col ${isFullscreen ? 'p-0' : 'p-4'}`}>
-      {/* Header Toolbar */}
-      <div className="bg-blueprint-800 border-b border-blueprint-700 p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-blueprint-100">PDF Editor</h2>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={undo}
-              disabled={historyIndex <= 0}
-              className="p-2 text-blueprint-400 hover:text-blueprint-100 disabled:opacity-50"
-            >
-              <Undo className="h-4 w-4" />
-            </button>
-            <button
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-              className="p-2 text-blueprint-400 hover:text-blueprint-100 disabled:opacity-50"
-            >
-              <Redo className="h-4 w-4" />
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-blueprint-900 z-50 flex flex-col">
+      {/* Title Bar */}
+      <div className="bg-blueprint-950 border-b border-blueprint-800 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <FileText className="h-5 w-5 text-accent-cyan" />
+          <span className="text-blueprint-100 font-medium">PDF Editor - {file.name}</span>
         </div>
-
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
-            className="p-2 text-blueprint-400 hover:text-blueprint-100"
-          >
-            <ZoomOut className="h-4 w-4" />
-          </button>
-          <span className="text-blueprint-100 min-w-[60px] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-            className="p-2 text-blueprint-400 hover:text-blueprint-100"
-          >
-            <ZoomIn className="h-4 w-4" />
-          </button>
-          
-          <div className="w-px h-6 bg-blueprint-600 mx-2" />
-          
-          <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 text-blueprint-400 hover:text-blueprint-100"
+            className="p-2 text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-800 rounded"
           >
             <Maximize2 className="h-4 w-4" />
           </button>
-          
-          <button
-            onClick={savePDF}
-            className="px-4 py-2 bg-accent-cyan text-blueprint-900 rounded-lg font-medium hover:bg-accent-cyan/90"
-          >
-            <Save className="h-4 w-4 mr-2 inline" />
-            Save
-          </button>
-          
-          <button
-            onClick={downloadPDF}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
-          >
-            <Download className="h-4 w-4 mr-2 inline" />
-            Download
-          </button>
-          
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-blueprint-700 text-blueprint-100 rounded-lg font-medium hover:bg-blueprint-600"
+            className="p-2 text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-800 rounded"
           >
-            Close
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Tools */}
-        <div className="w-64 bg-blueprint-800 border-r border-blueprint-700 p-4 overflow-y-auto">
-          <div className="space-y-6">
-            {/* Tools */}
-            <div>
-              <h3 className="text-sm font-semibold text-blueprint-200 mb-3">Tools</h3>
-              <div className="grid grid-cols-2 gap-2">
+      {/* Ribbon Toolbar */}
+      <div className="bg-blueprint-800 border-b border-blueprint-700">
+        {/* Tab Headers */}
+        <div className="flex border-b border-blueprint-700">
+          {[
+            { id: 'home', label: 'Home' },
+            { id: 'insert', label: 'Insert' },
+            { id: 'design', label: 'Design' },
+            { id: 'layout', label: 'Layout' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-6 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-blueprint-700 text-blueprint-100 border-b-2 border-accent-cyan'
+                  : 'text-blueprint-300 hover:text-blueprint-100 hover:bg-blueprint-750'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-3">
+          {activeTab === 'home' && (
+            <div className="flex items-center space-x-6">
+              {/* File Operations */}
+              <div className="flex items-center space-x-2 border-r border-blueprint-600 pr-6">
+                <button
+                  onClick={savePDF}
+                  className="flex items-center space-x-2 px-3 py-2 bg-accent-cyan text-blueprint-900 rounded font-medium hover:bg-accent-cyan/90"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Save</span>
+                </button>
+                <button
+                  onClick={downloadPDF}
+                  className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download</span>
+                </button>
+              </div>
+
+              {/* History */}
+              <div className="flex items-center space-x-1 border-r border-blueprint-600 pr-6">
+                <button
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                  className="p-2 text-blueprint-400 hover:text-blueprint-100 disabled:opacity-50 hover:bg-blueprint-700 rounded"
+                  title="Undo"
+                >
+                  <Undo className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                  className="p-2 text-blueprint-400 hover:text-blueprint-100 disabled:opacity-50 hover:bg-blueprint-700 rounded"
+                  title="Redo"
+                >
+                  <Redo className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Tools */}
+              <div className="flex items-center space-x-1 border-r border-blueprint-600 pr-6">
                 {[
                   { id: 'select', icon: MousePointer, label: 'Select' },
                   { id: 'text', icon: Type, label: 'Text' },
-                  { id: 'image', icon: Image, label: 'Image' },
-                  { id: 'rectangle', icon: Square, label: 'Rectangle' },
-                  { id: 'circle', icon: Circle, label: 'Circle' },
-                  { id: 'line', icon: Minus, label: 'Line' },
                 ].map((toolItem) => (
                   <button
                     key={toolItem.id}
                     onClick={() => setTool(toolItem.id as any)}
-                    className={`p-3 rounded-lg border transition-colors ${
+                    className={`p-2 rounded transition-colors ${
                       tool === toolItem.id
-                        ? 'bg-accent-cyan text-blueprint-900 border-accent-cyan'
-                        : 'bg-blueprint-900 text-blueprint-300 border-blueprint-600 hover:border-blueprint-500'
+                        ? 'bg-accent-cyan text-blueprint-900'
+                        : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
                     }`}
+                    title={toolItem.label}
                   >
-                    <toolItem.icon className="h-4 w-4 mx-auto mb-1" />
-                    <div className="text-xs">{toolItem.label}</div>
+                    <toolItem.icon className="h-4 w-4" />
                   </button>
                 ))}
               </div>
-            </div>
 
-            {/* Element Properties */}
-            {selectedElementData && (
-              <div>
-                <h3 className="text-sm font-semibold text-blueprint-200 mb-3">Properties</h3>
-                <div className="space-y-3">
-                  {selectedElementData.type === 'text' && (
-                    <>
-                      <div>
-                        <label className="block text-xs text-blueprint-400 mb-1">Content</label>
-                        <textarea
-                          value={selectedElementData.content}
-                          onChange={(e) => updateElement(selectedElement!, { content: e.target.value })}
-                          className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
-                          rows={3}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs text-blueprint-400 mb-1">Font Size</label>
-                        <input
-                          type="number"
-                          value={selectedElementData.fontSize}
-                          onChange={(e) => updateElement(selectedElement!, { fontSize: parseInt(e.target.value) })}
-                          className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
-                          min="8"
-                          max="72"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs text-blueprint-400 mb-1">Font Family</label>
-                        <select
-                          value={selectedElementData.fontFamily}
-                          onChange={(e) => updateElement(selectedElement!, { fontFamily: e.target.value })}
-                          className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
-                        >
-                          {fontFamilies.map(font => (
-                            <option key={font} value={font}>{font}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs text-blueprint-400 mb-1">Color</label>
-                        <input
-                          type="color"
-                          value={selectedElementData.color}
-                          onChange={(e) => updateElement(selectedElement!, { color: e.target.value })}
-                          className="w-full h-8 bg-blueprint-900 border border-blueprint-600 rounded"
-                        />
-                      </div>
-                      
-                      <div className="flex space-x-1">
-                        {[
-                          { key: 'bold', icon: Bold },
-                          { key: 'italic', icon: Italic },
-                          { key: 'underline', icon: Underline },
-                          { key: 'strikethrough', icon: Strikethrough },
-                        ].map(({ key, icon: Icon }) => (
-                          <button
-                            key={key}
-                            onClick={() => updateElement(selectedElement!, { 
-                              [key]: !selectedElementData[key as keyof TextElement] 
-                            })}
-                            className={`p-1 rounded ${
-                              selectedElementData[key as keyof TextElement]
-                                ? 'bg-accent-cyan text-blueprint-900'
-                                : 'bg-blueprint-900 text-blueprint-400 hover:text-blueprint-100'
-                            }`}
-                          >
-                            <Icon className="h-3 w-3" />
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
+              {/* Text Formatting */}
+              {selectedElementData?.type === 'text' && (
+                <div className="flex items-center space-x-2 border-r border-blueprint-600 pr-6">
+                  <select
+                    value={selectedElementData.fontFamily}
+                    onChange={(e) => updateElement(selectedElement!, { fontFamily: e.target.value })}
+                    className="px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
+                  >
+                    {fontFamilies.map(font => (
+                      <option key={font} value={font}>{font}</option>
+                    ))}
+                  </select>
                   
-                  {selectedElementData.type === 'image' && (
-                    <>
-                      <div>
-                        <label className="block text-xs text-blueprint-400 mb-1">Width</label>
-                        <input
-                          type="number"
-                          value={Math.round(selectedElementData.width)}
-                          onChange={(e) => updateElement(selectedElement!, { width: parseInt(e.target.value) })}
-                          className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-blueprint-400 mb-1">Height</label>
-                        <input
-                          type="number"
-                          value={Math.round(selectedElementData.height)}
-                          onChange={(e) => updateElement(selectedElement!, { height: parseInt(e.target.value) })}
-                          className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
-                        />
-                      </div>
-                    </>
-                  )}
+                  <input
+                    type="number"
+                    value={selectedElementData.fontSize}
+                    onChange={(e) => updateElement(selectedElement!, { fontSize: parseInt(e.target.value) })}
+                    className="w-16 px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
+                    min="8"
+                    max="72"
+                  />
                   
-                  <div>
-                    <label className="block text-xs text-blueprint-400 mb-1">Rotation</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="360"
-                      value={selectedElementData.rotation}
-                      onChange={(e) => updateElement(selectedElement!, { rotation: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                    <div className="text-xs text-blueprint-400 text-center">{selectedElementData.rotation}°</div>
-                  </div>
-                  
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-1">
                     <button
-                      onClick={() => updateElement(selectedElement!, { visible: !selectedElementData.visible })}
-                      className={`flex-1 p-2 rounded text-xs ${
-                        selectedElementData.visible
-                          ? 'bg-green-600 text-white'
-                          : 'bg-blueprint-700 text-blueprint-300'
+                      onClick={() => updateElement(selectedElement!, { bold: !selectedElementData.bold })}
+                      className={`p-1 rounded ${
+                        selectedElementData.bold
+                          ? 'bg-accent-cyan text-blueprint-900'
+                          : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
                       }`}
                     >
-                      {selectedElementData.visible ? <Eye className="h-3 w-3 mx-auto" /> : <EyeOff className="h-3 w-3 mx-auto" />}
+                      <Bold className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => updateElement(selectedElement!, { locked: !selectedElementData.locked })}
-                      className={`flex-1 p-2 rounded text-xs ${
-                        selectedElementData.locked
-                          ? 'bg-red-600 text-white'
-                          : 'bg-blueprint-700 text-blueprint-300'
+                      onClick={() => updateElement(selectedElement!, { italic: !selectedElementData.italic })}
+                      className={`p-1 rounded ${
+                        selectedElementData.italic
+                          ? 'bg-accent-cyan text-blueprint-900'
+                          : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
                       }`}
                     >
-                      {selectedElementData.locked ? <Lock className="h-3 w-3 mx-auto" /> : <Unlock className="h-3 w-3 mx-auto" />}
+                      <Italic className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => updateElement(selectedElement!, { underline: !selectedElementData.underline })}
+                      className={`p-1 rounded ${
+                        selectedElementData.underline
+                          ? 'bg-accent-cyan text-blueprint-900'
+                          : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
+                      }`}
+                    >
+                      <Underline className="h-4 w-4" />
                     </button>
                   </div>
                   
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => duplicateElement(selectedElement!)}
-                      className="flex-1 p-2 bg-blueprint-700 text-blueprint-100 rounded text-xs hover:bg-blueprint-600"
-                    >
-                      <Copy className="h-3 w-3 mx-auto" />
-                    </button>
-                    <button
-                      onClick={() => deleteElement(selectedElement!)}
-                      className="flex-1 p-2 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-                    >
-                      <Trash2 className="h-3 w-3 mx-auto" />
-                    </button>
-                  </div>
+                  <input
+                    type="color"
+                    value={selectedElementData.color}
+                    onChange={(e) => updateElement(selectedElement!, { color: e.target.value })}
+                    className="w-8 h-8 bg-blueprint-900 border border-blueprint-600 rounded cursor-pointer"
+                  />
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
 
+              {/* Zoom */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
+                  className="p-2 text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700 rounded"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <span className="text-blueprint-100 min-w-[60px] text-center text-sm">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+                  className="p-2 text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700 rounded"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'insert' && (
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2 border-r border-blueprint-600 pr-6">
+                <button
+                  onClick={() => setTool('text')}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded transition-colors ${
+                    tool === 'text'
+                      ? 'bg-accent-cyan text-blueprint-900'
+                      : 'bg-blueprint-700 text-blueprint-100 hover:bg-blueprint-600'
+                  }`}
+                >
+                  <Type className="h-4 w-4" />
+                  <span>Text Box</span>
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center space-x-2 px-3 py-2 bg-blueprint-700 text-blueprint-100 rounded hover:bg-blueprint-600"
+                >
+                  <Image className="h-4 w-4" />
+                  <span>Image</span>
+                </button>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <span className="text-blueprint-300 text-sm">Shapes:</span>
+                <button
+                  onClick={() => setTool('rectangle')}
+                  className={`p-2 rounded transition-colors ${
+                    tool === 'rectangle'
+                      ? 'bg-accent-cyan text-blueprint-900'
+                      : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
+                  }`}
+                >
+                  <Square className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setTool('circle')}
+                  className={`p-2 rounded transition-colors ${
+                    tool === 'circle'
+                      ? 'bg-accent-cyan text-blueprint-900'
+                      : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
+                  }`}
+                >
+                  <Circle className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setTool('line')}
+                  className={`p-2 rounded transition-colors ${
+                    tool === 'line'
+                      ? 'bg-accent-cyan text-blueprint-900'
+                      : 'text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700'
+                  }`}
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'design' && (
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowGrid(!showGrid)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded transition-colors ${
+                    showGrid
+                      ? 'bg-accent-cyan text-blueprint-900'
+                      : 'bg-blueprint-700 text-blueprint-100 hover:bg-blueprint-600'
+                  }`}
+                >
+                  <Grid className="h-4 w-4" />
+                  <span>Grid</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'layout' && (
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={addPage}
+                  className="flex items-center space-x-2 px-3 py-2 bg-blueprint-700 text-blueprint-100 rounded hover:bg-blueprint-600"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Page</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
         {/* Main Canvas Area */}
         <div className="flex-1 flex flex-col">
           {/* Canvas Container */}
@@ -803,20 +817,15 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
           >
             <div className="mx-auto" style={{ width: 'fit-content' }}>
               {pages[currentPageIndex] && (
-                <div className="relative shadow-2xl">
-                  <canvas
-                    ref={canvasRef}
-                    width={pages[currentPageIndex].width * zoom}
-                    height={pages[currentPageIndex].height * zoom}
-                    onClick={handleCanvasClick}
-                    className="bg-white cursor-crosshair"
-                    style={{
-                      width: pages[currentPageIndex].width * zoom,
-                      height: pages[currentPageIndex].height * zoom,
-                    }}
-                  />
-                  
-                  {/* Render background */}
+                <div 
+                  className="relative shadow-2xl bg-white cursor-crosshair"
+                  style={{
+                    width: pages[currentPageIndex].width * zoom,
+                    height: pages[currentPageIndex].height * zoom,
+                  }}
+                  onClick={handleCanvasClick}
+                >
+                  {/* Background */}
                   {pages[currentPageIndex].backgroundImage && (
                     <img
                       src={pages[currentPageIndex].backgroundImage}
@@ -829,45 +838,41 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
                     />
                   )}
                   
-                  {/* Render elements */}
+                  {/* Elements */}
                   {pages[currentPageIndex].elements
-                    .filter(el => el.visible)
                     .sort((a, b) => a.zIndex - b.zIndex)
                     .map((element) => (
                       <div
                         key={element.id}
                         className={`absolute border-2 ${
                           selectedElement === element.id
-                            ? 'border-accent-cyan'
+                            ? 'border-accent-cyan bg-accent-cyan/10'
                             : 'border-transparent hover:border-blueprint-400'
-                        } ${element.locked ? 'cursor-not-allowed' : 'cursor-move'}`}
+                        } cursor-move`}
                         style={{
                           left: element.x * zoom,
                           top: element.y * zoom,
                           width: element.width * zoom,
                           height: element.height * zoom,
                           transform: `rotate(${element.rotation}deg)`,
-                          zIndex: element.zIndex,
+                          zIndex: element.zIndex + 10,
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!element.locked) {
-                            setSelectedElement(element.id);
-                          }
+                          setSelectedElement(element.id);
                         }}
                       >
                         {element.type === 'text' && (
                           <div
-                            className="w-full h-full flex items-center"
+                            className="w-full h-full flex items-center px-2"
                             style={{
                               fontSize: element.fontSize * zoom,
                               fontFamily: element.fontFamily,
                               color: element.color,
                               fontWeight: element.bold ? 'bold' : 'normal',
                               fontStyle: element.italic ? 'italic' : 'normal',
-                              textDecoration: `${element.underline ? 'underline' : ''} ${element.strikethrough ? 'line-through' : ''}`.trim(),
+                              textDecoration: element.underline ? 'underline' : 'none',
                               textAlign: element.alignment,
-                              padding: '4px',
                             }}
                           >
                             {element.content}
@@ -915,16 +920,12 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
                         )}
                         
                         {/* Selection handles */}
-                        {selectedElement === element.id && !element.locked && (
+                        {selectedElement === element.id && (
                           <>
-                            {/* Corner handles for resizing */}
                             <div className="absolute -top-1 -left-1 w-2 h-2 bg-accent-cyan border border-white cursor-nw-resize" />
                             <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent-cyan border border-white cursor-ne-resize" />
                             <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-accent-cyan border border-white cursor-sw-resize" />
                             <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-accent-cyan border border-white cursor-se-resize" />
-                            
-                            {/* Rotation handle */}
-                            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-green-500 border border-white rounded-full cursor-grab" />
                           </>
                         )}
                       </div>
@@ -942,7 +943,7 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
               <h3 className="text-sm font-semibold text-blueprint-200">Pages</h3>
               <button
                 onClick={addPage}
-                className="p-1 text-blueprint-400 hover:text-blueprint-100"
+                className="p-1 text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700 rounded"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -976,15 +977,6 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
                   {/* Page actions */}
                   <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="flex space-x-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          duplicatePage(index);
-                        }}
-                        className="p-1 bg-blueprint-700 text-blueprint-300 rounded hover:text-blueprint-100"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
                       {pages.length > 1 && (
                         <button
                           onClick={(e) => {
@@ -1004,6 +996,74 @@ const PDFEditor: React.FC<PDFEditorProps> = ({ file, onSave, onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* Properties Panel */}
+      {selectedElementData && (
+        <div className="bg-blueprint-800 border-t border-blueprint-700 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-blueprint-200">Element Properties</h3>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => duplicateElement(selectedElement!)}
+                className="p-1 text-blueprint-400 hover:text-blueprint-100 hover:bg-blueprint-700 rounded"
+                title="Duplicate"
+              >
+                <Copy className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => deleteElement(selectedElement!)}
+                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded"
+                title="Delete"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+          
+          {selectedElementData.type === 'text' && (
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs text-blueprint-400 mb-1">Content</label>
+                <input
+                  type="text"
+                  value={selectedElementData.content}
+                  onChange={(e) => updateElement(selectedElement!, { content: e.target.value })}
+                  className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-blueprint-400 mb-1">Font Size</label>
+                <input
+                  type="number"
+                  value={selectedElementData.fontSize}
+                  onChange={(e) => updateElement(selectedElement!, { fontSize: parseInt(e.target.value) })}
+                  className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
+                  min="8"
+                  max="72"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-blueprint-400 mb-1">X Position</label>
+                <input
+                  type="number"
+                  value={Math.round(selectedElementData.x)}
+                  onChange={(e) => updateElement(selectedElement!, { x: parseInt(e.target.value) })}
+                  className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-blueprint-400 mb-1">Y Position</label>
+                <input
+                  type="number"
+                  value={Math.round(selectedElementData.y)}
+                  onChange={(e) => updateElement(selectedElement!, { y: parseInt(e.target.value) })}
+                  className="w-full px-2 py-1 bg-blueprint-900 border border-blueprint-600 rounded text-blueprint-100 text-sm"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Hidden file input for images */}
       <input
