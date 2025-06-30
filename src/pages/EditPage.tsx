@@ -4,14 +4,17 @@ import { motion } from 'framer-motion';
 import FileUpload from '../components/FileUpload';
 import ToolHeader from '../components/ToolHeader';
 import ProcessingStatus from '../components/ProcessingStatus';
+import PDFEditor from '../components/PDFEditor/PDFEditor';
 import { getToolConfig } from '../utils/toolConfig';
 import { useFileProcessor } from '../hooks/useFileProcessor';
-import { Download, Package } from 'lucide-react';
+import { Download, Package, Edit3 } from 'lucide-react';
 
 const EditPage: React.FC = () => {
   const { toolType } = useParams<{ toolType: string }>();
   const [files, setFiles] = useState<File[]>([]);
   const [watermarkText, setWatermarkText] = useState('WATERMARK');
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
   
   const { isProcessing, processedFiles, error, processFiles, downloadFile, downloadAllAsZip, reset } = useFileProcessor();
   const toolConfig = getToolConfig('edit', toolType || '');
@@ -24,9 +27,34 @@ const EditPage: React.FC = () => {
   const handleEdit = useCallback(async () => {
     if (files.length === 0) return;
     
+    // For PDF editor, open the editor instead of processing
+    if (toolType === 'edit-pdf') {
+      setEditingFile(files[0]);
+      setShowEditor(true);
+      return;
+    }
+    
     const options = toolType === 'add-watermark' ? { watermarkText } : undefined;
     await processFiles(files, toolType || '', 'edit', options);
   }, [files, toolType, watermarkText, processFiles]);
+
+  const handleEditorSave = useCallback((editedPdf: Blob) => {
+    // Create a processed file from the edited PDF
+    const filename = `edited_${editingFile?.name || 'document.pdf'}`;
+    const processedFile = { blob: editedPdf, filename };
+    
+    // Simulate the processed files state
+    reset();
+    // We'll need to update the hook to handle this case
+    downloadFile(processedFile);
+    setShowEditor(false);
+    setEditingFile(null);
+  }, [editingFile, downloadFile, reset]);
+
+  const handleEditorClose = useCallback(() => {
+    setShowEditor(false);
+    setEditingFile(null);
+  }, []);
 
   if (!toolConfig) {
     return (
@@ -36,6 +64,17 @@ const EditPage: React.FC = () => {
           <p className="text-blueprint-400">The requested editing tool could not be found.</p>
         </div>
       </div>
+    );
+  }
+
+  // Show PDF Editor
+  if (showEditor && editingFile) {
+    return (
+      <PDFEditor
+        file={editingFile}
+        onSave={handleEditorSave}
+        onClose={handleEditorClose}
+      />
     );
   }
 
@@ -93,13 +132,28 @@ const EditPage: React.FC = () => {
                     />
                   </div>
                 )}
+
+                {toolType === 'edit-pdf' && (
+                  <div className="mb-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
+                    <h4 className="text-blue-400 font-medium mb-2 flex items-center">
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      PDF Editor Features
+                    </h4>
+                    <ul className="text-blue-300 text-sm space-y-1">
+                      <li>• Direct text editing and formatting</li>
+                      <li>• Add images, shapes, and annotations</li>
+                      <li>• Page management and organization</li>
+                      <li>• Professional editing tools</li>
+                    </ul>
+                  </div>
+                )}
                 
                 <div className="text-center">
                   <button
                     onClick={handleEdit}
                     className="px-8 py-4 bg-accent-cyan text-blueprint-900 rounded-xl font-semibold hover:bg-accent-cyan/90 transition-all duration-200 hover:scale-105"
                   >
-                    {toolConfig.actionText || 'Start Editing'}
+                    {toolType === 'edit-pdf' ? 'Open Editor' : (toolConfig.actionText || 'Start Editing')}
                   </button>
                 </div>
               </div>
