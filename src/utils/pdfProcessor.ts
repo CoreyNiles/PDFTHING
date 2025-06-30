@@ -15,6 +15,30 @@ export interface PdfFormattingOptions {
 }
 
 export class PDFProcessor {
+  // Sanitize text to remove characters that can't be encoded by WinAnsi
+  private static sanitizeTextForPdf(text: string): string {
+    return text
+      // Replace bullet points and similar characters
+      .replace(/[\u2022\u2023\u25E6\u2043\u204C\u204D\uF0B7]/g, '• ')
+      // Replace em dash and en dash
+      .replace(/[\u2013\u2014]/g, '-')
+      // Replace curly quotes
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      // Replace other common problematic characters
+      .replace(/[\u2026]/g, '...')
+      .replace(/[\u00A0]/g, ' ') // Non-breaking space
+      // Remove or replace any remaining non-ASCII characters that might cause issues
+      .replace(/[^\x00-\x7F]/g, (char) => {
+        // Keep common extended ASCII characters that WinAnsi can handle
+        const code = char.charCodeAt(0);
+        if (code >= 128 && code <= 255) {
+          return char; // Keep extended ASCII
+        }
+        return '?'; // Replace with question mark for unknown characters
+      });
+  }
+
   // Extract text from PDF using PDF.js with enhanced error handling
   static async extractTextFromPdf(file: File): Promise<string> {
     try {
@@ -363,11 +387,14 @@ export class PDFProcessor {
         position = 'center'
       } = options || {};
 
+      // Sanitize watermark text
+      const sanitizedWatermarkText = this.sanitizeTextForPdf(watermarkText);
+
       pages.forEach(page => {
         const { width, height } = page.getSize();
         
         const fontSize = customFontSize || Math.min(width, height) / 15;
-        const textWidth = font.widthOfTextAtSize(watermarkText, fontSize);
+        const textWidth = font.widthOfTextAtSize(sanitizedWatermarkText, fontSize);
         const textHeight = font.heightAtSize(fontSize);
         
         let x, y;
@@ -394,7 +421,7 @@ export class PDFProcessor {
             y = height / 2;
         }
         
-        page.drawText(watermarkText, {
+        page.drawText(sanitizedWatermarkText, {
           x,
           y,
           size: fontSize,
@@ -756,6 +783,10 @@ export class PDFProcessor {
         preserveSpacing = false
       } = options;
 
+      // Sanitize the content to handle Unicode characters
+      const sanitizedContent = this.sanitizeTextForPdf(content);
+      const sanitizedTitle = this.sanitizeTextForPdf(title);
+
       const pdfDoc = await PDFDocument.create();
       let font;
       
@@ -778,7 +809,7 @@ export class PDFProcessor {
       
       // Add title
       const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      page.drawText(title, {
+      page.drawText(sanitizedTitle, {
         x: margin,
         y: yPosition,
         size: fontSize + 4,
@@ -798,7 +829,7 @@ export class PDFProcessor {
       yPosition -= (fontSize + 10);
       
       // Process content
-      const lines = content.split('\n');
+      const lines = sanitizedContent.split('\n');
       const maxWidth = width - (margin * 2);
       const lineHeight = fontSize * lineSpacing;
       
